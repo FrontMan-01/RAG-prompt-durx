@@ -381,6 +381,8 @@ def pull_model_from_hf(model_card, local_model_repo_path, api_key=None, **kwargs
     Inputs: model_card, path to the local model repo, and an api_key (optional). """
 
     from huggingface_hub import hf_hub_download
+    from huggingface_hub.utils import enable_progress_bars
+    import sys
 
     gguf_file = model_card["gguf_file"]     # e.g., "ggml-model-q4_k_m.gguf",
     gguf_repo = model_card["gguf_repo"]     # e.g., "llmware/dragon-mistral-7b-v0-gguf"
@@ -391,10 +393,15 @@ def pull_model_from_hf(model_card, local_model_repo_path, api_key=None, **kwargs
     logger.warning(f"Models - pulling model from repo - {gguf_repo} - "
                    f"and will cache into local folder - {local_model_repo_path}")
 
+    enable_progress_bars()
+    print(f"\n[LLMWare Download] Pulling model file '{gguf_file}' from HF repo '{gguf_repo}' to '{local_model_repo_path}'...", flush=True)
+
     try:
         downloader = hf_hub_download(gguf_repo, gguf_file, local_dir=local_model_repo_path,
                                      local_dir_use_symlinks=False, token=api_key)
-    except:
+        print(f"[LLMWare Download] Finished download: {downloader}", flush=True)
+    except Exception as e:
+        print(f"[LLMWare Download] Error downloading model: {e}", flush=True)
         raise LLMWareException(message=f"Models - load_model - pull_model_from_hf - Something has "
                                        f"gone wrong in the download process.   Please try again.")
 
@@ -447,6 +454,8 @@ def pull_snapshot_from_hf(model_card, local_model_repo_path, api_key=None, **kwa
     """
 
     from huggingface_hub import snapshot_download
+    from huggingface_hub.utils import enable_progress_bars
+    import sys
 
     if "gguf_repo" in model_card:
         repo_name = model_card["gguf_repo"]
@@ -459,10 +468,15 @@ def pull_snapshot_from_hf(model_card, local_model_repo_path, api_key=None, **kwa
 
     # repo_name = model_card["gguf_repo"]
 
+    enable_progress_bars()
+    print(f"\n[LLMWare Download] Pulling snapshot from HF repo '{repo_name}' to '{local_model_repo_path}'...", flush=True)
+
     try:
         snapshot = snapshot_download(repo_name, local_dir=local_model_repo_path, token=api_key,
                                      local_dir_use_symlinks=False)
-    except:
+        print(f"[LLMWare Download] Finished snapshot download: {snapshot}", flush=True)
+    except Exception as e:
+        print(f"[LLMWare Download] Error downloading snapshot: {e}", flush=True)
         raise LLMWareException(message=f"Models - load_model - pull_snapshot_from_hf - {repo_name} - Something has "
                                        f"gone wrong in the download process.   Please try again.")
 
@@ -10287,7 +10301,7 @@ class GGUFGenerativeModel(BaseModel):
 
                             logger.warning("Not successful loading preferred lib so reverting to fallback lib.")
 
-                            return ctypes.cdll.LoadLibrary(str(_lib_path))
+                            return ctypes.cdll.LoadLibrary(str(fall_back_option))
                         except:
 
                             # if fall-back fails
@@ -15181,7 +15195,7 @@ class GGUFVisionGenerativeModel(BaseModel):
 
                             logger.warning("Not successful loading preferred lib so reverting to fallback lib.")
 
-                            return ctypes.cdll.LoadLibrary(str(_lib_path))
+                            return ctypes.cdll.LoadLibrary(str(fall_back_option))
                         except:
 
                             # if fall-back fails
@@ -15357,7 +15371,7 @@ class GGUFVisionGenerativeModel(BaseModel):
 
                             logger.warning("Not successful loading preferred lib so reverting to fallback lib.")
 
-                            return ctypes.cdll.LoadLibrary(str(_lib_path))
+                            return ctypes.cdll.LoadLibrary(str(fall_back_option))
 
                         except:
 

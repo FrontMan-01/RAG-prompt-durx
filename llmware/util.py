@@ -1798,8 +1798,19 @@ class LocalTokenizer:
 
         # need to pull from HF cache
         from huggingface_hub import hf_hub_download
+        from huggingface_hub.utils import enable_progress_bars
+        import sys
 
-        downloader = hf_hub_download(repo, file, local_dir=local_path, local_dir_use_symlinks=False)
+        # Ensure progress bars are enabled and show status
+        enable_progress_bars()
+        print(f"\n[LLMWare Download] Pulling tokenizer '{file}' from HF repo '{repo}' to '{local_path}'...", flush=True)
+
+        try:
+            downloader = hf_hub_download(repo, file, local_dir=local_path, local_dir_use_symlinks=False)
+            print(f"[LLMWare Download] Finished tokenizer download: {downloader}", flush=True)
+        except Exception as e:
+            print(f"[LLMWare Download] Error downloading tokenizer: {e}", flush=True)
+            raise e
 
         #   remove ongoing links, if any, created by attributes not in the file repo
         files_created = os.listdir(local_path)
