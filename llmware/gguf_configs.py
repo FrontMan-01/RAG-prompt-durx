@@ -165,11 +165,17 @@ class llama_context_params(ctypes.Structure):
         ("n_batch", ctypes.c_uint32),
         ("n_ubatch", ctypes.c_uint32),
         ("n_seq_max", ctypes.c_uint32),
-        ("n_threads", ctypes.c_uint32),
-        ("n_threads_batch", ctypes.c_uint32),
+        ("n_rs_seq", ctypes.c_uint32),
+        ("n_outputs_max", ctypes.c_uint32),
+        ("n_threads", ctypes.c_int32),
+        ("n_threads_batch", ctypes.c_int32),
+
+        ("ctx_type", ctypes.c_int),
         ("rope_scaling_type", ctypes.c_int),
         ("pooling_type", ctypes.c_int),
         ("attention_type", ctypes.c_int),
+        ("flash_attn_type", ctypes.c_int),
+
         ("rope_freq_base", ctypes.c_float),
         ("rope_freq_scale", ctypes.c_float),
         ("yarn_ext_factor", ctypes.c_float),
@@ -178,22 +184,27 @@ class llama_context_params(ctypes.Structure):
         ("yarn_beta_slow", ctypes.c_float),
         ("yarn_orig_ctx", ctypes.c_uint32),
         ("defrag_thold", ctypes.c_float),
+
         ("cb_eval", ggml_backend_sched_eval_callback),
         ("cb_eval_user_data", ctypes.c_void_p),
+
         ("type_k", ctypes.c_int),
         ("type_v", ctypes.c_int),
+
         ("abort_callback", ggml_abort_callback),
         ("abort_callback_data", ctypes.c_void_p),
+
         ("embeddings", ctypes.c_bool),
         ("offload_kqv", ctypes.c_bool),
-        ("flash_attn", ctypes.c_bool),
         ("no_perf", ctypes.c_bool),
         ("op_offload", ctypes.c_bool),
         ("swa_full", ctypes.c_bool),
         ("kv_unified", ctypes.c_bool),
-        ("sampler", ctypes.c_void_p),
-        ("n_sampler", ctypes.c_int),
-        ("flash_attn_type", ctypes.c_int), # -1 LLAMA_FLASH_ATTN_TYPE_AUTO),
+
+        ("samplers", ctypes.c_void_p),
+        ("n_samplers", ctypes.c_size_t),
+
+        ("ctx_other", ctypes.c_void_p),
 
     ]
 
