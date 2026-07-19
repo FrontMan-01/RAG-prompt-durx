@@ -1,0 +1,18 @@
+{
+  "benign-01": {
+    "signature": "7f1505fad204f38f6d60d563e455111568b7243443e495010691cdb236f36c83",
+    "trust_score": 1.0
+  },
+  "benign-02": {
+    "signature": "fc9e8d1c7a1f736086cb24544e5da5be82d40956a03901c0873ba209fa1f20ba",
+    "trust_score": 1.0
+  },
+  "benign-03": {
+    "signature": "5ab2429a0907bbf184f68e13738ad60d11b5e897c7b3195ef8fc8606aa496c04",
+    "trust_score": 1.0
+  },
+  "benign-04": {
+    "signature": "05a418cb92fc3eace580be167058f39164265d65b6447836df2d3b9f10d95f8e",
+    "trust_score": 1.0
+  }
+}
