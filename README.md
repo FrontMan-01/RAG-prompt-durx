@@ -1,4 +1,139 @@
-# llmware
+# 🛡️ RAG-prompt-durx: RAG Prompt Injection & Poisoning Defense Suite
+
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
+[![Defense Suite](https://img.shields.io/badge/benchmark-500%20Test%20Cases-purple)](#dataset--benchmark-suite)
+[![PoisonedRAG Defense](https://img.shields.io/badge/defense-ALSD%20%7C%20Norm%20Clipping%20%7C%20SIP-orange)](#implemented-defenses)
+
+**RAG-prompt-durx** is an end-to-end evaluation framework and defense research suite designed to detect, benchmark, and mitigate prompt injection attacks, knowledge corruption (PoisonedRAG), adversarial retrieval manipulation (HotFlip), and indirect prompt injection vulnerabilities in Retrieval-Augmented Generation (RAG) pipelines.
+
+Built on top of a tailored, local CPU-optimized `llmware` runtime (`bling-phi-3.5-gguf`), this repository contains empirical research, benchmark datasets, defense implementations, and evaluation reports exploring the limits of single-layer vs. defense-in-depth mitigations.
+
+---
+
+## 📑 Table of Contents
+- [Core Contributions & Insights](#core-contributions--insights)
+- [Benchmark Results](#benchmark-results)
+- [Implemented Defenses](#implemented-defenses)
+- [Dataset & Benchmark Suite](#dataset--benchmark-suite)
+- [Repository Structure](#repository-structure)
+- [Getting Started](#getting-started)
+- [Underlying Engine: llmware](#underlying-engine-llmware)
+
+---
+
+## 🔬 Core Contributions & Insights
+
+### 1. Passive Knowledge Corruption Vulnerability
+Standard RAG prompt defenses (such as context demarcation or prompt-level instructions) assume adversarial inputs attempt explicit instruction hijacking. However, **PoisonedRAG** attacks exploit passive fact poisoning:
+- Malicious documents containing falsified facts (e.g., altered dates, injected claims) are retrieved by the vector index.
+- Because the malicious context contains no command instructions, prompt guardrails and lexical filters pass them with a **100% bypass rate** on baseline configurations.
+
+### 2. Retrieval-Layer Defense via Norm Clipping
+- White-box PoisonedRAG attacks use gradient-based perturbations (e.g., **HotFlip**) to craft passages whose vector embeddings exhibit artificially inflated norms.
+- By enforcing **Norm Clipping ($\alpha=1.75$)** at the retrieval stage, high-norm adversarial triggers are scaled down, blocking the retrieval of adversarial documents.
+
+### 3. Instruction Authenticity via Signed Corpus Protocol
+- To combat untrusted context injection, the **Signed Instruction Protocol (SIP)** cryptographically validates trusted corpus chunks before passing them to the generator.
+
+### 4. Adaptive Layered Suspicion Defense (ALSD)
+- A multi-signal suspicion scoring pipeline integrating lexical markers, likelihood scoring, semantic divergence, and an automated LLM judge with key rotation and fail-closed security.
+
+---
+
+## 📊 Benchmark Results
+
+From empirical evaluations on the test suite using `bling-phi-3.5-gguf`:
+
+| Configuration | Block Rate | Bypass Rate | FP Rate | Avg Latency | TP / FN / FP / TN |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Baseline** | 0.0% | 94.4% | 0.0% | 1,772 ms | 0 / 17 / 0 / 4 |
+| **Lexical Only** | 0.0% | 94.4% | 0.0% | 1,733 ms | 0 / 17 / 0 / 4 |
+| **Guardrail LLM Only** | 0.0% | 94.4% | 0.0% | 3,388 ms | 0 / 17 / 0 / 4 |
+| **Context Demarcation Only** | 0.0% | 88.9% | 0.0% | 4,692 ms | 0 / 16 / 0 / 4 |
+| **Grounding Check Only** | 0.0% | 94.4% | 0.0% | 3,711 ms | 0 / 17 / 0 / 4 |
+| **Defense-in-Depth (Full)** | 0.0% | 88.9% | 0.0% | 8,282 ms | 0 / 16 / 0 / 4 |
+| **Norm Clipping ($\alpha=1.75$)** | 27.8% | 72.2% | 0.0% | 4,764 ms | 5 / 13 / 0 / 4 |
+| **Signed Instruction Protocol** | 50.0% | 50.0% | 0.0% | 19,141 ms | 9 / 9 / 0 / 4 |
+| **Hybrid Defense (Clipping + Signature)** | **100.0%** | **0.0%** | **0.0%** | 33,171 ms | **18 / 0 / 0 / 4** |
+
+> [!TIP]
+> Chaining **Norm Clipping** at the vector retrieval layer with **Signed Instruction Protocol** at the prompt assembly layer achieves 100% attack mitigation with zero false positives.
+
+---
+
+## 🛡️ Implemented Defenses
+
+1. **ALSD (Adaptive Layered Suspicion Defense)** ([`alsd_defense.py`](alsd_defense.py)):
+   - **Signal 1**: Likelihood Score analysis.
+   - **Signal 2**: Semantic divergence between retrieved context and query.
+   - **Signal 3**: Heuristic & Regex token matching for injection signatures.
+   - **Signal 4**: Groq-powered LLM evaluator with automatic API key rotation and fail-closed enforcement.
+2. **Norm Clipping Defense** ([`eval_pipeline_defense_1.py`](eval_pipeline_defense_1.py)):
+   - Scales down embedding norms beyond threshold $\alpha$, mitigating HotFlip adversarial retrieval attacks.
+3. **Signed Instruction Protocol** ([`eval_pipeline_defense_2.py`](eval_pipeline_defense_2.py), [`sign_corpus.py`](sign_corpus.py)):
+   - Cryptographic signing of corpus entries preventing tampered passages from executing privileged instructions.
+4. **Hybrid Defense** ([`eval_pipeline_defense_3.py`](eval_pipeline_defense_3.py)):
+   - Combines vector space norm constraints and cryptographic authenticity validation.
+
+---
+
+## 📂 Dataset & Benchmark Suite
+
+The repository includes a comprehensive 500-sample adversarial benchmark suite ([`dataset_500.py`](dataset_500.py) / [`dataset_500.json`](dataset_500.json)):
+- **Benign Queries**: Baseline clean queries to compute False Positive Rates (FPR).
+- **Black-box Injections**: Direct prompt injections, role-play overrides, system prompt leak attempts.
+- **HotFlip White-box Attacks**: Adversarially optimized trigger tokens designed to force retrieval of poisoned passages.
+- **Indirect Prompt Injections**: Hidden payloads embedded inside third-party documentation, web pages, or ingested PDFs.
+- **Crypto & Corpus Tampering**: Document modification attempts tested against cryptographically signed corpora.
+
+---
+
+## 📁 Repository Structure
+
+```text
+├── alsd_defense.py              # Adaptive Layered Suspicion Defense implementation
+├── eval_pipeline.py             # Baseline evaluation pipeline
+├── eval_pipeline_defense_1.py   # Defense 1: Norm Clipping evaluation
+├── eval_pipeline_defense_2.py   # Defense 2: Signed Instruction Protocol evaluation
+├── eval_pipeline_defense_3.py   # Defense 3: Hybrid Defense evaluation
+├── compile_comparison.py        # Report compiler aggregating metrics into HTML
+├── run_experiments.py           # Automated runner for full comparison suite
+├── run_alsd.py                  # ALSD evaluation runner
+├── run_500.py                   # 500-test-case benchmark runner
+├── dataset.py                   # 22-case core benchmark dataset
+├── dataset_500.py               # 500-case expanded benchmark dataset
+├── summary_results.txt          # Quick text summary of benchmark results
+├── comparison_report.html       # Visual HTML comparison report
+├── eval_report.html             # Granular evaluation report
+└── llmware/                     # Base framework with optimized GGUF engine
+```
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+pip install sentence-transformers groq numpy
+```
+
+### 2. Run Full Defense Benchmark Suite
+```bash
+python run_experiments.py
+```
+This executes the baseline and all three defense pipelines, compiling the results into `comparison_report.html` and `summary_results.txt`.
+
+### 3. Run the 500-Case Evaluation
+```bash
+python run_500.py
+```
+
+---
+
+# Underlying Engine: llmware
 ![Static Badge](https://img.shields.io/badge/python-3.10_%7C_3.11%7C_3.12%7C_3.13%7C_3.14-blue?color=blue)
 ![PyPI - Version](https://img.shields.io/pypi/v/llmware?color=blue)
 [![members](https://discord-live-members-count-badge.vercel.app/api/discord-members?guildId=1179245642770559067&label=discord%20members&color=5865F2)](https://discord.gg/bphreFK4NJ)
